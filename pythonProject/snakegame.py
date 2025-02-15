@@ -68,6 +68,7 @@ def your_score(score, high_score):
 def gameLoop():
     game_over = False
     game_close = False
+    win = False
 
     x1 = dis_width / 2
     y1 = panel_height + snake_block  # Начальная позиция ниже панели
@@ -98,6 +99,19 @@ def gameLoop():
                     if event.key == pygame.K_c:
                         gameLoop()
 
+        while win == True:
+            dis.fill(blue)
+            message("Вы выиграли! Нажмите Q-Выйти или C-Играть снова", green)
+            pygame.display.update()
+
+            for event in pygame.event.get():
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_q:
+                        game_over = True
+                        win = False
+                    if event.key == pygame.K_c:
+                        gameLoop()
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 game_over = True
@@ -124,6 +138,13 @@ def gameLoop():
 
         x1 += x1_change
         y1 += y1_change
+
+        # Проверка условия победы
+        if Length_of_snake >= 30:
+            win = True
+            if Length_of_snake - 1 > high_score:
+                save_high_score(Length_of_snake - 1)
+                high_score = Length_of_snake - 1
 
         # Отрисовка панели для счёта и рекорда
         dis.fill(blue)
