@@ -29,11 +29,11 @@ pygame.display.set_caption('Змейка')
 clock = pygame.time.Clock()
 
 snake_block = 10
-snake_speed = 15
 
 # Шрифты
 font_style = pygame.font.SysFont("bahnschrift", 25)
 score_font = pygame.font.SysFont("comicsansms", 35)
+menu_font = pygame.font.SysFont("comicsansms", 50)
 
 # Файл для хранения рекорда
 record_file = 'snake_record.txt'
@@ -65,7 +65,21 @@ def your_score(score, high_score):
     dis.blit(value, [10, 10])
     dis.blit(high_value, [dis_width - high_value.get_width() - 10, 10])
 
-def gameLoop():
+def draw_menu():
+    dis.fill(blue)
+    title = menu_font.render("Змейка", True, white)
+    easy_text = font_style.render("Легко (30 очков)", True, white)
+    medium_text = font_style.render("Средне (60 очков)", True, white)
+    hard_text = font_style.render("Тяжело (100 очков)", True, white)
+
+    dis.blit(title, [dis_width / 3, dis_height / 6])
+    dis.blit(easy_text, [dis_width / 3, dis_height / 2 - 50])
+    dis.blit(medium_text, [dis_width / 3, dis_height / 2])
+    dis.blit(hard_text, [dis_width / 3, dis_height / 2 + 50])
+
+    pygame.display.update()
+
+def gameLoop(difficulty):
     game_over = False
     game_close = False
     win = False
@@ -84,6 +98,18 @@ def gameLoop():
 
     high_score = get_high_score()
 
+    snake_speed = {
+        'easy': 10,
+        'medium': 15,
+        'hard': 20
+    }[difficulty]
+
+    win_condition = {
+        'easy': 30,
+        'medium': 60,
+        'hard': 100
+    }[difficulty]
+
     while not game_over:
 
         while game_close == True:
@@ -97,7 +123,7 @@ def gameLoop():
                         game_over = True
                         game_close = False
                     if event.key == pygame.K_c:
-                        gameLoop()
+                        main_menu()
 
         while win == True:
             dis.fill(blue)
@@ -110,7 +136,7 @@ def gameLoop():
                         game_over = True
                         win = False
                     if event.key == pygame.K_c:
-                        gameLoop()
+                        gameLoop(difficulty)
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -140,7 +166,7 @@ def gameLoop():
         y1 += y1_change
 
         # Проверка условия победы
-        if Length_of_snake >= 30:
+        if Length_of_snake >= win_condition:
             win = True
             if Length_of_snake - 1 > high_score:
                 save_high_score(Length_of_snake - 1)
@@ -182,4 +208,22 @@ def gameLoop():
     pygame.quit()
     quit()
 
-gameLoop()
+def main_menu():
+    menu = True
+    while menu:
+        draw_menu()
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                quit()
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                mouse_pos = pygame.mouse.get_pos()
+                if dis_width / 3 <= mouse_pos[0] <= dis_width / 3 + 200:
+                    if dis_height / 2 - 50 <= mouse_pos[1] <= dis_height / 2 - 50 + 50:
+                        gameLoop('easy')
+                    elif dis_height / 2 <= mouse_pos[1] <= dis_height / 2 + 50:
+                        gameLoop('medium')
+                    elif dis_height / 2 + 50 <= mouse_pos[1] <= dis_height / 2 + 100:
+                        gameLoop('hard')
+
+main_menu()
