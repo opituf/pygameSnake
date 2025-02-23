@@ -199,6 +199,7 @@ def gameLoop(difficulty):
                     x1_change = 0
                     direction = 270  # Вниз
 
+        # Проверка столкновения со стенками
         if x1 >= dis_width or x1 < 0 or y1 >= dis_height or y1 < panel_height:
             game_close = True
             if Length_of_snake - 1 > high_score:
@@ -209,6 +210,14 @@ def gameLoop(difficulty):
         y1 += y1_change
 
         snake_Head = [x1, y1]
+
+        # Проверка столкновения с самой собой
+        if snake_Head in snake_List[1:]:
+            game_close = True
+            if Length_of_snake - 1 > high_score:
+                save_high_score(Length_of_snake - 1)
+                high_score = Length_of_snake - 1
+
         snake_List.insert(0, snake_Head)
         if len(snake_List) > Length_of_snake:
             del snake_List[-1]
