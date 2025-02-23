@@ -5,7 +5,6 @@ import os
 
 # Инициализация Pygame
 pygame.init()
-# Инициализация звука
 pygame.mixer.init()
 
 # Определение цветов
@@ -20,14 +19,14 @@ blue = (50, 153, 213)
 dis_width = 800
 dis_height = 600
 
-# Высота панели для отображения счёта и рекорда
+# Высота панели для отображения счета и рекорда
 panel_height = 50
 
 # Создание окна
 dis = pygame.display.set_mode((dis_width, dis_height))
 pygame.display.set_caption('Змейка')
 
-# Часы для контроля скорости змейки
+# Часы для контроля скорости змеи
 clock = pygame.time.Clock()
 snake_block = 10
 
@@ -94,7 +93,6 @@ def save_high_score(score):
 def our_snake(snake_block, snake_list, direction):
     for i, segment in enumerate(snake_list):
         if i == 0:
-            # Поворот головы змеи в зависимости от направления движения
             rotated_head = pygame.transform.rotate(snake_head_img, direction)
             dis.blit(rotated_head, (segment[0], segment[1]))
         else:
@@ -124,7 +122,6 @@ def draw_menu():
     dis.blit(easy_text, [dis_width / 3, dis_height / 2 - 50])
     dis.blit(medium_text, [dis_width / 3, dis_height / 2])
     dis.blit(hard_text, [dis_width / 3, dis_height / 2 + 50])
-    pygame.display.update()
 
 
 def gameLoop(difficulty):
@@ -133,10 +130,10 @@ def gameLoop(difficulty):
     game_close = False
     win = False
     x1 = dis_width / 2
-    y1 = panel_height + snake_block  # Начальная позиция ниже панели
+    y1 = panel_height + snake_block
     x1_change = 0
     y1_change = 0
-    direction = 0  # 0 - вправо, 90 - вниз, 180 - влево, 270 - вверх
+    direction = 0
     snake_List = []
     Length_of_snake = 1
     foodx = round(random.randrange(0, dis_width - snake_block) / 10.0) * 10.0
@@ -185,21 +182,20 @@ def gameLoop(difficulty):
                 if event.key == pygame.K_LEFT and x1_change != snake_block:
                     x1_change = -snake_block
                     y1_change = 0
-                    direction = 180  # Влево
+                    direction = 180
                 elif event.key == pygame.K_RIGHT and x1_change != -snake_block:
                     x1_change = snake_block
                     y1_change = 0
-                    direction = 0  # Вправо
+                    direction = 0
                 elif event.key == pygame.K_UP and y1_change != snake_block:
                     y1_change = -snake_block
                     x1_change = 0
-                    direction = 90  # Вверх
+                    direction = 90
                 elif event.key == pygame.K_DOWN and y1_change != -snake_block:
                     y1_change = snake_block
                     x1_change = 0
-                    direction = 270  # Вниз
+                    direction = 270
 
-        # Проверка столкновения со стенками
         if x1 >= dis_width or x1 < 0 or y1 >= dis_height or y1 < panel_height:
             game_close = True
             if Length_of_snake - 1 > high_score:
@@ -210,8 +206,6 @@ def gameLoop(difficulty):
         y1 += y1_change
 
         snake_Head = [x1, y1]
-
-        # Проверка столкновения с самой собой
         if snake_Head in snake_List[1:]:
             game_close = True
             if Length_of_snake - 1 > high_score:
@@ -247,48 +241,83 @@ def gameLoop(difficulty):
     quit()
 
 
-def draw_volume_slider(x, y, width, height, slider_x):
+def draw_volume_controls(x, y):
     """
-    Отрисовка ползунка громкости.
-    x, y - координаты начала ползунка
-    width, height - ширина и высота ползунка
-    slider_x - текущая позиция маркера
+    Отрисовка кнопок управления громкостью.
+    x, y - координаты начала блока управления громкостью.
     """
-    pygame.draw.rect(dis, white, [x, y, width, height])  # Линия ползунка
-    pygame.draw.rect(dis, red, [slider_x - height // 2, y, height, height])  # Маркер
+    button_width = 30
+    button_height = 30
+
+    # Отображение надписи "Громкость"
+    volume_text = font_style.render("Громкость", True, white)
+    dis.blit(volume_text, [x, y - 40])
+
+    # Отображение текущего уровня громкости
+    volume_percent = int(volume_level * 100)
+    percent_text = font_style.render(f"{volume_percent}%", True, white)
+    dis.blit(percent_text, [x + 50, y])
+
+    # Рисование кнопки "+"
+    pygame.draw.rect(dis, green, [x, y, button_width, button_height])
+    plus_text = font_style.render("+", True, black)
+    dis.blit(plus_text, [x + 8, y + 5])
+
+    # Рисование кнопки "-"
+    pygame.draw.rect(dis, red, [x + 115, y, button_width, button_height])
+    minus_text = font_style.render("-", True, black)
+    dis.blit(minus_text, [x + 123, y + 5])
 
 
-def handle_volume_slider(slider_x, min_x, max_x):
+def handle_volume_buttons(mouse_pos, x, y):
     """
-    Обработка перемещения маркера ползунка.
-    Возвращает новое значение громкости.
+    Обработка нажатия на кнопки управления громкостью.
+    mouse_pos - позиция мыши (x, y).
+    x, y - координаты начала блока управления громкостью.
     """
     global volume_level
-    volume_level = (slider_x - min_x) / (max_x - min_x)
-    pygame.mixer.music.set_volume(volume_level)
+
+    button_width = 30
+    button_height = 30
+
+    # Проверка нажатия на кнопку "+"
+    if x <= mouse_pos[0] <= x + button_width and y <= mouse_pos[1] <= y + button_height:
+        volume_level = min(volume_level + 0.1, 1.0)
+        pygame.mixer.music.set_volume(volume_level)
+
+    # Проверка нажатия на кнопку "-"
+    elif x + 115 <= mouse_pos[0] <= x + 115 + button_width and y <= mouse_pos[1] <= y + button_height:
+        volume_level = max(volume_level - 0.1, 0.0)
+        pygame.mixer.music.set_volume(volume_level)
 
 
 def main_menu():
     menu = True
-    slider_x = dis_width // 2  # Начальная позиция маркера
-    slider_min_x = dis_width // 3
-    slider_max_x = slider_min_x + 200
-    slider_y = dis_height - 100
-    slider_height = 20
+    clock = pygame.time.Clock()
+
+    # Координаты блока управления громкостью
+    volume_x = dis_width // 3
+    volume_y = dis_height - 100
 
     while menu:
         dis.fill(blue)
         draw_menu()
 
-        # Отрисовка ползунка громкости
-        draw_volume_slider(slider_min_x, slider_y, 200, slider_height, slider_x)
+        # Отрисовка кнопок управления громкостью
+        draw_volume_controls(volume_x, volume_y)
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 quit()
+
             if event.type == pygame.MOUSEBUTTONDOWN:
                 mouse_pos = pygame.mouse.get_pos()
+
+                # Обработка кликов по кнопкам управления громкостью
+                handle_volume_buttons(mouse_pos, volume_x, volume_y)
+
+                # Проверка кликов на уровни сложности
                 if dis_width / 3 <= mouse_pos[0] <= dis_width / 3 + 200:
                     if dis_height / 2 - 50 <= mouse_pos[1] <= dis_height / 2 - 50 + 50:
                         gameLoop('easy')
@@ -296,19 +325,10 @@ def main_menu():
                         gameLoop('medium')
                     elif dis_height / 2 + 50 <= mouse_pos[1] <= dis_height / 2 + 100:
                         gameLoop('hard')
-                # Проверка клика на ползунке
-                if slider_min_x <= mouse_pos[0] <= slider_max_x and slider_y <= mouse_pos[1] <= slider_y + slider_height:
-                    slider_x = mouse_pos[0]
-                    handle_volume_slider(slider_x, slider_min_x, slider_max_x)
 
-        # Обновление положения маркера, если он выходит за границы
-        if pygame.mouse.get_pressed()[0]:  # Если левая кнопка мыши нажата
-            mouse_pos = pygame.mouse.get_pos()
-            if slider_min_x <= mouse_pos[0] <= slider_max_x:
-                slider_x = mouse_pos[0]
-                handle_volume_slider(slider_x, slider_min_x, slider_max_x)
-
-        pygame.display.update()
+        pygame.display.flip()
+        clock.tick(30)
 
 
-main_menu()
+if __name__ == "__main__":
+    main_menu()
