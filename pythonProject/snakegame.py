@@ -19,6 +19,31 @@ blue = (50, 153, 213)
 dis_width = 800
 dis_height = 600
 
+# Размеры блока змеи по умолчанию
+default_snake_block = 10
+
+# Настройки сложности
+difficulty_settings = {
+    'easy': {
+        'width': dis_width // 2,
+        'height': dis_height // 2,
+        'snake_block': default_snake_block * 2,
+        'speed': 10
+    },
+    'medium': {
+        'width': dis_width * 3 // 4,
+        'height': dis_height * 3 // 4,
+        'snake_block': default_snake_block * 1.5,
+        'speed': 15
+    },
+    'hard': {
+        'width': dis_width,
+        'height': dis_height,
+        'snake_block': default_snake_block,
+        'speed': 20
+    }
+}
+
 # Высота панели для отображения счета и рекорда
 panel_height = 50
 
@@ -28,7 +53,6 @@ pygame.display.set_caption('Змейка')
 
 # Часы для контроля скорости змеи
 clock = pygame.time.Clock()
-snake_block = 10
 
 # Шрифты
 font_style = pygame.font.SysFont("bahnschrift", 25)
@@ -39,40 +63,23 @@ menu_font = pygame.font.SysFont("comicsansms", 50)
 record_file = 'snake_record.txt'
 
 # Глобальная переменная для уровня громкости
-volume_level = 0.5  # Начальный уровень громкости (50%)
+volume_level = 0.5
 
-# Загрузка изображений
-try:
-    apple_img = pygame.image.load('apple.png')
-    apple_img = pygame.transform.scale(apple_img, (snake_block, snake_block))  # Масштабирование изображения
-except pygame.error as e:
-    print(f"Ошибка загрузки изображения apple.png: {e}")
-    apple_img = pygame.Surface((snake_block, snake_block))
-    apple_img.fill(green)
-
-try:
-    snake_head_img = pygame.image.load('snake_head.png')
-    snake_head_img = pygame.transform.scale(snake_head_img, (snake_block, snake_block))  # Масштабирование изображения
-except pygame.error as e:
-    print(f"Ошибка загрузки изображения snake_head.png: {e}")
-    snake_head_img = pygame.Surface((snake_block, snake_block))
-    snake_head_img.fill(black)
-
-try:
-    snake_body_img = pygame.image.load('snake_body.png')
-    snake_body_img = pygame.transform.scale(snake_body_img, (snake_block, snake_block))  # Масштабирование изображения
-except pygame.error as e:
-    print(f"Ошибка загрузки изображения snake_body.png: {e}")
-    snake_body_img = pygame.Surface((snake_block, snake_block))
-    snake_body_img.fill(black)
-
-# Загрузка и воспроизведение фоновой музыки
 try:
     pygame.mixer.music.load("background_music.mp3")
     pygame.mixer.music.set_volume(volume_level)  # Установка начального уровня громкости
     pygame.mixer.music.play(-1)  # -1 означает бесконечное воспроизведение
 except pygame.error as e:
     print(f"Ошибка загрузки музыки: {e}")
+
+# Загрузка изображений
+def load_image(path, size):
+    try:
+        img = pygame.image.load(path)
+        return pygame.transform.scale(img, size)
+    except pygame.error as e:
+        print(f"Ошибка загрузки изображения {path}: {e}")
+        return pygame.Surface(size)
 
 
 def get_high_score():
@@ -90,91 +97,167 @@ def save_high_score(score):
         file.write(str(score))
 
 
-def our_snake(snake_block, snake_list, direction):
+def our_snake(snake_block, snake_list, direction, head_img, body_img):
     for i, segment in enumerate(snake_list):
         if i == 0:
-            rotated_head = pygame.transform.rotate(snake_head_img, direction)
+            rotated_head = pygame.transform.rotate(head_img, direction)
             dis.blit(rotated_head, (segment[0], segment[1]))
         else:
-            rotated_body = pygame.transform.rotate(snake_body_img, direction)
-            dis.blit(rotated_body, (segment[0], segment[1]))
+            dis.blit(body_img, (segment[0], segment[1]))
 
 
-def message(msg, color):
+def message(msg, color, width, height):
     mesg = font_style.render(msg, True, color)
-    dis.blit(mesg, [dis_width / 6, dis_height / 3])
+    dis.blit(mesg, [width / 6, height / 3])
 
 
-def your_score(score, high_score):
+def your_score(score, high_score, width):
     value = score_font.render(f"Ваш счёт: {score}", True, yellow)
     high_value = score_font.render(f"Рекорд: {high_score}", True, yellow)
     dis.blit(value, [10, 10])
-    dis.blit(high_value, [dis_width - high_value.get_width() - 10, 10])
+    dis.blit(high_value, [width - high_value.get_width() - 10, 10])
+
+
+def show_game_over_screen(score, high_score):
+    dis = pygame.display.set_mode((dis_width, dis_height))
+    while True:
+        dis.fill(blue)
+        message("Вы проиграли! Нажмите Q-Выйти или C-Играть снова", red, dis_width, dis_height)
+        your_score(score, high_score, dis_width)
+        pygame.display.update()
+
+        for event in pygame.event.get():
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_q:
+                    return False
+                elif event.key == pygame.K_c:
+                    return True
+
+
+def show_victory_screen(score, high_score):
+    dis = pygame.display.set_mode((dis_width, dis_height))
+    while True:
+        dis.fill(blue)
+        message("Вы выиграли! Нажмите Q-Выйти или C-Играть снова", green, dis_width, dis_height)
+        your_score(score, high_score, dis_width)
+        pygame.display.update()
+
+        for event in pygame.event.get():
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_q:
+                    return False
+                elif event.key == pygame.K_c:
+                    return True
 
 
 def draw_menu():
-    dis.fill(blue)
-    title = menu_font.render("Змейка", True, white)
-    easy_text = font_style.render("Легко (30 очков)", True, white)
-    medium_text = font_style.render("Средне (60 очков)", True, white)
-    hard_text = font_style.render("Тяжело (100 очков)", True, white)
-    dis.blit(title, [dis_width / 3, dis_height / 6])
-    dis.blit(easy_text, [dis_width / 3, dis_height / 2 - 50])
-    dis.blit(medium_text, [dis_width / 3, dis_height / 2])
-    dis.blit(hard_text, [dis_width / 3, dis_height / 2 + 50])
+    global volume_level
+    selected_difficulty = None
+
+    while not selected_difficulty:
+        dis.fill(blue)
+        title = menu_font.render("Змейка", True, white)
+        easy_text = font_style.render("Легко (E)", True, white)
+        medium_text = font_style.render("Средне (M)", True, white)
+        hard_text = font_style.render("Тяжело (H)", True, white)
+
+        # Отображение управления громкостью
+        draw_volume_controls(dis_width - 200, dis_height - 100)
+
+        dis.blit(title, [dis_width / 3, dis_height / 6])
+        dis.blit(easy_text, [dis_width / 3, dis_height / 2 - 50])
+        dis.blit(medium_text, [dis_width / 3, dis_height / 2])
+        dis.blit(hard_text, [dis_width / 3, dis_height / 2 + 50])
+
+        pygame.display.update()
+
+        for event in pygame.event.get():
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_e:
+                    selected_difficulty = 'easy'
+                elif event.key == pygame.K_m:
+                    selected_difficulty = 'medium'
+                elif event.key == pygame.K_h:
+                    selected_difficulty = 'hard'
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                handle_volume_buttons(event.pos, dis_width - 200, dis_height - 100)
+
+    return selected_difficulty
+
+
+def draw_volume_controls(x, y):
+    button_width = 30
+    button_height = 30
+
+    # Отображение надписи "Громкость"
+    volume_text = font_style.render("Громкость", True, white)
+    dis.blit(volume_text, [x, y - 40])
+
+    # Отображение текущего уровня громкости
+    volume_percent = int(volume_level * 100)
+    percent_text = font_style.render(f"{volume_percent}%", True, white)
+    dis.blit(percent_text, [x + 50, y])
+
+    # Рисование кнопок "+/-"
+    pygame.draw.rect(dis, green, [x, y, button_width, button_height])
+    plus_text = font_style.render("+", True, black)
+    dis.blit(plus_text, [x + 8, y + 5])
+
+    pygame.draw.rect(dis, red, [x + 115, y, button_width, button_height])
+    minus_text = font_style.render("-", True, black)
+    dis.blit(minus_text, [x + 123, y + 5])
+
+
+def handle_volume_buttons(mouse_pos, x, y):
+    global volume_level
+    button_width = 30
+    button_height = 30
+
+    # Проверка нажатия на кнопку "+"
+    if x <= mouse_pos[0] <= x + button_width and y <= mouse_pos[1] <= y + button_height:
+        volume_level = min(volume_level + 0.1, 1.0)
+    # Проверка нажатия на кнопку "-"
+    elif x + 115 <= mouse_pos[0] <= x + 115 + button_width and y <= mouse_pos[1] <= y + button_height:
+        volume_level = max(volume_level - 0.1, 0.0)
+
+    pygame.mixer.music.set_volume(volume_level)
 
 
 def gameLoop(difficulty):
     global volume_level
     game_over = False
-    game_close = False
     win = False
-    x1 = dis_width / 2
+
+    # Применяем настройки для выбранной сложности
+    dis_width_loc = difficulty_settings[difficulty]['width']
+    dis_height_loc = difficulty_settings[difficulty]['height'] + panel_height
+    snake_block = int(difficulty_settings[difficulty]['snake_block'])
+    snake_speed = difficulty_settings[difficulty]['speed']
+
+    # Масштабирование спрайтов
+    apple_img = load_image('apple.png', (snake_block, snake_block))
+    snake_head_img = load_image('snake_head.png', (snake_block, snake_block))
+    snake_body_img = load_image('snake_body.png', (snake_block, snake_block))
+
+    # Создаем окно с новыми размерами
+    dis = pygame.display.set_mode((dis_width_loc, dis_height_loc))
+    pygame.display.set_caption('Змейка')
+
+    x1 = dis_width_loc // 2
     y1 = panel_height + snake_block
     x1_change = 0
     y1_change = 0
     direction = 0
     snake_List = []
     Length_of_snake = 1
-    foodx = round(random.randrange(0, dis_width - snake_block) / 10.0) * 10.0
-    foody = round(random.randrange(panel_height, dis_height - snake_block) / 10.0) * 10.0
+
+    foodx = round(random.randrange(0, dis_width_loc - snake_block) / snake_block) * snake_block
+    foody = round(random.randrange(panel_height, dis_height_loc - panel_height - snake_block) / snake_block) * snake_block
+
     high_score = get_high_score()
-    win_condition = {
-        'easy': 30,
-        'medium': 60,
-        'hard': 100
-    }[difficulty]
-    snake_speed = {
-        'easy': 10,
-        'medium': 15,
-        'hard': 20
-    }[difficulty]
+    win_condition = {'easy': 30, 'medium': 60, 'hard': 100}[difficulty]
 
     while not game_over:
-        while game_close == True:
-            dis.fill(blue)
-            message("Вы проиграли! Нажмите Q-Выйти или C-Играть снова", red)
-            pygame.display.update()
-            for event in pygame.event.get():
-                if event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_q:
-                        game_over = True
-                        game_close = False
-                    if event.key == pygame.K_c:
-                        gameLoop(difficulty)
-
-        while win == True:
-            dis.fill(blue)
-            message("Вы выиграли! Нажмите Q-Выйти или C-Играть снова", green)
-            pygame.display.update()
-            for event in pygame.event.get():
-                if event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_q:
-                        game_over = True
-                        win = False
-                    if event.key == pygame.K_c:
-                        gameLoop(difficulty)
-
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 game_over = True
@@ -196,43 +279,41 @@ def gameLoop(difficulty):
                     x1_change = 0
                     direction = 270
 
-        if x1 >= dis_width or x1 < 0 or y1 >= dis_height or y1 < panel_height:
-            game_close = True
-            if Length_of_snake - 1 > high_score:
-                save_high_score(Length_of_snake - 1)
-                high_score = Length_of_snake - 1
-
         x1 += x1_change
         y1 += y1_change
 
+        # Проверка выхода за границы поля
+        if x1 >= dis_width_loc or x1 < 0 or y1 >= dis_height_loc or y1 < panel_height:
+            game_over = not show_game_over_screen(Length_of_snake - 1, high_score)
+            if not game_over:
+                return gameLoop(difficulty)
+
         snake_Head = [x1, y1]
-        if snake_Head in snake_List[1:]:
-            game_close = True
-            if Length_of_snake - 1 > high_score:
-                save_high_score(Length_of_snake - 1)
-                high_score = Length_of_snake - 1
+        if snake_Head in snake_List[:-1]:
+            game_over = not show_game_over_screen(Length_of_snake - 1, high_score)
+            if not game_over:
+                return gameLoop(difficulty)
 
         snake_List.insert(0, snake_Head)
         if len(snake_List) > Length_of_snake:
             del snake_List[-1]
 
         if Length_of_snake >= win_condition:
-            win = True
-            if Length_of_snake - 1 > high_score:
-                save_high_score(Length_of_snake - 1)
-                high_score = Length_of_snake - 1
+            win = not show_victory_screen(Length_of_snake - 1, high_score)
+            if not win:
+                return gameLoop(difficulty)
 
         dis.fill(blue)
-        pygame.draw.rect(dis, white, [0, 0, dis_width, panel_height])
+        pygame.draw.rect(dis, white, [0, 0, dis_width_loc, panel_height])
 
-        our_snake(snake_block, snake_List, direction)
+        our_snake(snake_block, snake_List, direction, snake_head_img, snake_body_img)
         dis.blit(apple_img, (foodx, foody))
-        your_score(Length_of_snake - 1, high_score)
+        your_score(Length_of_snake - 1, high_score, dis_width_loc)
         pygame.display.update()
 
-        if x1 == foodx and y1 == foody:
-            foodx = round(random.randrange(0, dis_width - snake_block) / 10.0) * 10.0
-            foody = round(random.randrange(panel_height, dis_height - snake_block) / 10.0) * 10.0
+        if abs(x1 - foodx) < snake_block and abs(y1 - foody) < snake_block:
+            foodx = round(random.randrange(0, dis_width_loc - snake_block) / snake_block) * snake_block
+            foody = round(random.randrange(panel_height, dis_height_loc - panel_height - snake_block) / snake_block) * snake_block
             Length_of_snake += 1
 
         clock.tick(snake_speed)
@@ -241,94 +322,6 @@ def gameLoop(difficulty):
     quit()
 
 
-def draw_volume_controls(x, y):
-    """
-    Отрисовка кнопок управления громкостью.
-    x, y - координаты начала блока управления громкостью.
-    """
-    button_width = 30
-    button_height = 30
-
-    # Отображение надписи "Громкость"
-    volume_text = font_style.render("Громкость", True, white)
-    dis.blit(volume_text, [x, y - 40])
-
-    # Отображение текущего уровня громкости
-    volume_percent = int(volume_level * 100)
-    percent_text = font_style.render(f"{volume_percent}%", True, white)
-    dis.blit(percent_text, [x + 50, y])
-
-    # Рисование кнопки "+"
-    pygame.draw.rect(dis, green, [x, y, button_width, button_height])
-    plus_text = font_style.render("+", True, black)
-    dis.blit(plus_text, [x + 8, y + 5])
-
-    # Рисование кнопки "-"
-    pygame.draw.rect(dis, red, [x + 115, y, button_width, button_height])
-    minus_text = font_style.render("-", True, black)
-    dis.blit(minus_text, [x + 123, y + 5])
-
-
-def handle_volume_buttons(mouse_pos, x, y):
-    """
-    Обработка нажатия на кнопки управления громкостью.
-    mouse_pos - позиция мыши (x, y).
-    x, y - координаты начала блока управления громкостью.
-    """
-    global volume_level
-
-    button_width = 30
-    button_height = 30
-
-    # Проверка нажатия на кнопку "+"
-    if x <= mouse_pos[0] <= x + button_width and y <= mouse_pos[1] <= y + button_height:
-        volume_level = min(volume_level + 0.1, 1.0)
-        pygame.mixer.music.set_volume(volume_level)
-
-    # Проверка нажатия на кнопку "-"
-    elif x + 115 <= mouse_pos[0] <= x + 115 + button_width and y <= mouse_pos[1] <= y + button_height:
-        volume_level = max(volume_level - 0.1, 0.0)
-        pygame.mixer.music.set_volume(volume_level)
-
-
-def main_menu():
-    menu = True
-    clock = pygame.time.Clock()
-
-    # Координаты блока управления громкостью
-    volume_x = dis_width // 3
-    volume_y = dis_height - 100
-
-    while menu:
-        dis.fill(blue)
-        draw_menu()
-
-        # Отрисовка кнопок управления громкостью
-        draw_volume_controls(volume_x, volume_y)
-
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                quit()
-
-            if event.type == pygame.MOUSEBUTTONDOWN:
-                mouse_pos = pygame.mouse.get_pos()
-
-                # Обработка кликов по кнопкам управления громкостью
-                handle_volume_buttons(mouse_pos, volume_x, volume_y)
-
-                # Проверка кликов на уровни сложности
-                if dis_width / 3 <= mouse_pos[0] <= dis_width / 3 + 200:
-                    if dis_height / 2 - 50 <= mouse_pos[1] <= dis_height / 2 - 50 + 50:
-                        gameLoop('easy')
-                    elif dis_height / 2 <= mouse_pos[1] <= dis_height / 2 + 50:
-                        gameLoop('medium')
-                    elif dis_height / 2 + 50 <= mouse_pos[1] <= dis_height / 2 + 100:
-                        gameLoop('hard')
-
-        pygame.display.flip()
-        clock.tick(30)
-
-
 if __name__ == "__main__":
-    main_menu()
+    selected_difficulty = draw_menu()
+    gameLoop(selected_difficulty)
