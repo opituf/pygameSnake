@@ -28,19 +28,22 @@ difficulty_settings = {
         'width': dis_width // 2,
         'height': dis_height // 2,
         'snake_block': default_snake_block * 2,
-        'speed': 10
+        'speed': 10,
+        'record_file': 'easy_records.txt'
     },
     'medium': {
         'width': dis_width * 3 // 4,
         'height': dis_height * 3 // 4,
         'snake_block': default_snake_block * 1.5,
-        'speed': 15
+        'speed': 15,
+        'record_file': 'medium_records.txt'
     },
     'hard': {
         'width': dis_width,
         'height': dis_height,
         'snake_block': default_snake_block,
-        'speed': 20
+        'speed': 20,
+        'record_file': 'hard_records.txt'
     }
 }
 
@@ -59,9 +62,6 @@ font_style = pygame.font.SysFont("bahnschrift", 25)
 score_font = pygame.font.SysFont("comicsansms", 35)
 menu_font = pygame.font.SysFont("comicsansms", 50)
 
-# Файл для хранения рекорда
-record_file = 'snake_record.txt'
-
 # Глобальная переменная для уровня громкости
 volume_level = 0.5
 
@@ -71,6 +71,7 @@ try:
     pygame.mixer.music.play(-1)  # -1 означает бесконечное воспроизведение
 except pygame.error as e:
     print(f"Ошибка загрузки музыки: {e}")
+
 
 # Загрузка изображений
 def load_image(path, size):
@@ -82,19 +83,31 @@ def load_image(path, size):
         return pygame.Surface(size)
 
 
-def get_high_score():
+# Получение списка рекордов для конкретной сложности
+def get_leaderboard(difficulty):
+    record_file = difficulty_settings[difficulty]['record_file']
     if os.path.exists(record_file):
         with open(record_file, 'r') as file:
-            try:
-                return int(file.read().strip())
-            except ValueError:
-                return 0
+            lines = file.readlines()
+            leaderboard = []
+            for line in lines:
+                name, score = line.strip().split(',')
+                leaderboard.append((name, int(score)))
+            return sorted(leaderboard, key=lambda x: x[1], reverse=True)
+    return []
+
+# Сохранение нового рекорда для конкретной сложности
+def save_record(difficulty, name, score):
+    record_file = difficulty_settings[difficulty]['record_file']
+    with open(record_file, 'a') as file:
+        file.write(f"{name},{score}\n")
+
+# Получение счета лидера для конкретной сложности
+def get_leader_score(difficulty):
+    leaderboard = get_leaderboard(difficulty)
+    if leaderboard:
+        return leaderboard[0][1]
     return 0
-
-
-def save_high_score(score):
-    with open(record_file, 'w') as file:
-        file.write(str(score))
 
 
 def our_snake(snake_block, snake_list, direction, head_img, body_img):
@@ -103,7 +116,8 @@ def our_snake(snake_block, snake_list, direction, head_img, body_img):
             rotated_head = pygame.transform.rotate(head_img, direction)
             dis.blit(rotated_head, (segment[0], segment[1]))
         else:
-            dis.blit(body_img, (segment[0], segment[1]))
+            rotated_body = pygame.transform.rotate(body_img, direction)
+            dis.blit(rotated_body, (segment[0], segment[1]))
 
 
 def message(msg, color, width, height):
@@ -118,35 +132,97 @@ def your_score(score, high_score, width):
     dis.blit(high_value, [width - high_value.get_width() - 10, 10])
 
 
-def show_game_over_screen(score, high_score):
-    dis = pygame.display.set_mode((dis_width, dis_height))
+# Ввод имени пользователя
+def input_name():
+    name = ""
     while True:
-        dis.fill(blue)
-        message("Вы проиграли! Нажмите Q-Выйти или C-Играть снова", red, dis_width, dis_height)
-        your_score(score, high_score, dis_width)
-        pygame.display.update()
-
         for event in pygame.event.get():
             if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_q:
+                if event.unicode.isalpha():
+                    name += event.unicode
+                elif event.key == pygame.K_BACKSPACE:
+                    name = name[:-1]
+                elif event.key == pygame.K_RETURN and name != "":
+                    return name
+        dis.fill(blue)
+        text = font_style.render(f"Имя: {name}", True, white)
+        dis.blit(text, [dis_width // 3, dis_height // 2])
+        pygame.display.update()
+
+
+def show_game_over_screen(score, difficulty):
+    dis = pygame.display.set_mode((dis_width, dis_height))
+    unnamed = True
+
+    # Запрос имени игрока
+    name = input_name()
+    save_record(difficulty, name, score)
+    # Получение таблицы лидеров
+    leaderboard = get_leaderboard(difficulty)
+
+    while unnamed:
+        dis.fill(blue)
+        message("Вы проиграли! Введите ваше имя:", red, dis_width, dis_height)
+        pygame.display.update()
+        if name != "":
+            unnamed = False
+
+    while True:
+        # Отображение таблицы лидеров
+        dis.fill(blue)
+        message("Таблица лидеров:", white, dis_width, dis_height)
+        y_position = dis_height // 2
+        for i, (player_name, player_score) in enumerate(leaderboard[:5]):
+            leaderboard_text = font_style.render(f"{i + 1}. {player_name} - {player_score}", True, white)
+            dis.blit(leaderboard_text, [dis_width // 4, y_position])
+            y_position += 40
+        pygame.display.update()
+
+        # Обработка событий
+        for event in pygame.event.get():
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_q:  # Выход из игры
                     return False
-                elif event.key == pygame.K_c:
+                elif event.key == pygame.K_c:  # Продолжить игру
+                    game_over_exit = True
                     return True
 
 
-def show_victory_screen(score, high_score):
+def show_victory_screen(score, difficulty):
     dis = pygame.display.set_mode((dis_width, dis_height))
-    while True:
+    unnamed = True
+
+    # Запрос имени игрока
+    name = input_name()
+    save_record(difficulty, name, score)
+    # Получение таблицы лидеров
+    leaderboard = get_leaderboard(difficulty)
+
+    while unnamed:
         dis.fill(blue)
-        message("Вы выиграли! Нажмите Q-Выйти или C-Играть снова", green, dis_width, dis_height)
-        your_score(score, high_score, dis_width)
+        message("Вы выиграли! Введите ваше имя:", red, dis_width, dis_height)
+        pygame.display.update()
+        if name != "":
+            unnamed = False
+
+    while True:
+        # Отображение таблицы лидеров
+        dis.fill(blue)
+        message("Таблица лидеров:", white, dis_width, dis_height)
+        y_position = dis_height // 2
+        for i, (player_name, player_score) in enumerate(leaderboard[:5]):
+            leaderboard_text = font_style.render(f"{i + 1}. {player_name} - {player_score}", True, white)
+            dis.blit(leaderboard_text, [dis_width // 4, y_position])
+            y_position += 40
         pygame.display.update()
 
+        # Обработка событий
         for event in pygame.event.get():
             if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_q:
+                if event.key == pygame.K_q:  # Выход из игры
                     return False
-                elif event.key == pygame.K_c:
+                elif event.key == pygame.K_c:  # Продолжить игру
+                    game_over_exit = True
                     return True
 
 
@@ -179,8 +255,16 @@ def draw_menu():
                     selected_difficulty = 'medium'
                 elif event.key == pygame.K_h:
                     selected_difficulty = 'hard'
-            if event.type == pygame.MOUSEBUTTONDOWN:
-                handle_volume_buttons(event.pos, dis_width - 200, dis_height - 100)
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                mouse_x, mouse_y = pygame.mouse.get_pos()
+                if dis_width / 3 <= mouse_x <= dis_width / 3 + 150 and dis_height / 2 - 50 <= mouse_y <= dis_height / 2 - 20:
+                    selected_difficulty = 'easy'
+                elif dis_width / 3 <= mouse_x <= dis_width / 3 + 150 and dis_height / 2 <= mouse_y <= dis_height / 2 + 30:
+                    selected_difficulty = 'medium'
+                elif dis_width / 3 <= mouse_x <= dis_width / 3 + 150 and dis_height / 2 + 50 <= mouse_y <= dis_height / 2 + 80:
+                    selected_difficulty = 'hard'
+                else:
+                    handle_volume_buttons(event.pos, dis_width - 200, dis_height - 100)
 
     return selected_difficulty
 
@@ -252,9 +336,10 @@ def gameLoop(difficulty):
     Length_of_snake = 1
 
     foodx = round(random.randrange(0, dis_width_loc - snake_block) / snake_block) * snake_block
-    foody = round(random.randrange(panel_height, dis_height_loc - panel_height - snake_block) / snake_block) * snake_block
+    foody = round(
+        random.randrange(panel_height, dis_height_loc - panel_height - snake_block) / snake_block) * snake_block
 
-    high_score = get_high_score()
+    high_score = get_leader_score(difficulty)
     win_condition = {'easy': 30, 'medium': 60, 'hard': 100}[difficulty]
 
     while not game_over:
@@ -284,13 +369,13 @@ def gameLoop(difficulty):
 
         # Проверка выхода за границы поля
         if x1 >= dis_width_loc or x1 < 0 or y1 >= dis_height_loc or y1 < panel_height:
-            game_over = not show_game_over_screen(Length_of_snake - 1, high_score)
+            game_over = not show_game_over_screen(Length_of_snake - 1, difficulty)
             if not game_over:
                 return gameLoop(difficulty)
 
         snake_Head = [x1, y1]
         if snake_Head in snake_List[:-1]:
-            game_over = not show_game_over_screen(Length_of_snake - 1, high_score)
+            game_over = not show_game_over_screen(Length_of_snake - 1, difficulty)
             if not game_over:
                 return gameLoop(difficulty)
 
@@ -299,7 +384,7 @@ def gameLoop(difficulty):
             del snake_List[-1]
 
         if Length_of_snake >= win_condition:
-            win = not show_victory_screen(Length_of_snake - 1, high_score)
+            win = not show_victory_screen(Length_of_snake - 1, difficulty)
             if not win:
                 return gameLoop(difficulty)
 
@@ -313,7 +398,8 @@ def gameLoop(difficulty):
 
         if abs(x1 - foodx) < snake_block and abs(y1 - foody) < snake_block:
             foodx = round(random.randrange(0, dis_width_loc - snake_block) / snake_block) * snake_block
-            foody = round(random.randrange(panel_height, dis_height_loc - panel_height - snake_block) / snake_block) * snake_block
+            foody = round(
+                random.randrange(panel_height, dis_height_loc - panel_height - snake_block) / snake_block) * snake_block
             Length_of_snake += 1
 
         clock.tick(snake_speed)
