@@ -185,6 +185,11 @@ def show_game_over_screen(score, difficulty):
             leaderboard_text = font_style.render(f"{i + 1}. {player_name} - {player_score}", True, white)
             dis.blit(leaderboard_text, [dis_width // 4, y_position])
             y_position += 40
+
+        # Новая строка с инструкцией
+        instruction_text = font_style.render("Для выхода нажмите Q, для перезапуска C", True, yellow)
+        dis.blit(instruction_text, [dis_width // 6, dis_height - 50])
+
         pygame.display.update()
 
         # Обработка событий
@@ -193,7 +198,6 @@ def show_game_over_screen(score, difficulty):
                 if event.key == pygame.K_q:  # Выход из игры
                     return False
                 elif event.key == pygame.K_c:  # Продолжить игру
-                    game_over_exit = True
                     return True
 
 
@@ -223,6 +227,11 @@ def show_victory_screen(score, difficulty):
             leaderboard_text = font_style.render(f"{i + 1}. {player_name} - {player_score}", True, white)
             dis.blit(leaderboard_text, [dis_width // 4, y_position])
             y_position += 40
+
+        # Новая строка с инструкцией
+        instruction_text = font_style.render("Для выхода нажмите Q, для перезапуска C", True, yellow)
+        dis.blit(instruction_text, [dis_width // 6, dis_height - 50])
+
         pygame.display.update()
 
         # Обработка событий
@@ -231,7 +240,6 @@ def show_victory_screen(score, difficulty):
                 if event.key == pygame.K_q:  # Выход из игры
                     return False
                 elif event.key == pygame.K_c:  # Продолжить игру
-                    game_over_exit = True
                     return True
 
 
@@ -363,7 +371,7 @@ class Lava:
 
     def load_lava(self, dis_width_loc, dis_height_loc):
         # Загрузка спрайта лавы
-        self.lava_img = load_image("lava.png", (self.snake_block, self.snake_block))
+        self.column_img = load_image("column.png", (self.snake_block, self.snake_block))
 
         # Генерация 50 блоков лавы
         for _ in range(50):
@@ -375,7 +383,7 @@ class Lava:
     def draw(self, surface):
         # Рисуем все блоки лавы
         for block in self.lava_blocks:
-            surface.blit(self.lava_img, block)
+            surface.blit(self.column_img, block)
 
     def check_collision(self, snake_head):
         # Проверяем столкновение головы змеи с любым блоком лавы
