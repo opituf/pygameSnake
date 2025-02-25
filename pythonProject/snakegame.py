@@ -328,6 +328,56 @@ class AppleAnimation:
         surface.blit(self.frames[self.current_frame], (self.x, self.y))
 
 
+# Добавление класса для анимации синего яблока
+class BlueAppleAnimation:
+    def __init__(self, x, y, frames, frame_delay):
+        self.x = x
+        self.y = y
+        self.frames = frames
+        self.frame_delay = frame_delay
+        self.last_update_time = 0
+        self.current_frame = 0
+
+    def update(self):
+        current_time = pygame.time.get_ticks()
+        if current_time - self.last_update_time > self.frame_delay:
+            self.last_update_time = current_time
+            self.current_frame = (self.current_frame + 1) % len(self.frames)
+
+    def draw(self, surface):
+        surface.blit(self.frames[self.current_frame], (self.x, self.y))
+
+
+class Lava:
+    def __init__(self, snake_block, dis_width_loc, dis_height_loc):
+        self.snake_block = snake_block
+        self.lava_blocks = []
+        self.load_lava(dis_width_loc, dis_height_loc)
+
+    def load_lava(self, dis_width_loc, dis_height_loc):
+        # Загрузка спрайта лавы
+        self.lava_img = load_image("lava.png", (self.snake_block, self.snake_block))
+
+        # Генерация 50 блоков лавы
+        for _ in range(50):
+            x = round(random.randrange(0, dis_width_loc - self.snake_block) / self.snake_block) * self.snake_block
+            y = round(random.randrange(panel_height,
+                                       dis_height_loc - panel_height - self.snake_block) / self.snake_block) * self.snake_block
+            self.lava_blocks.append((x, y))
+
+    def draw(self, surface):
+        # Рисуем все блоки лавы
+        for block in self.lava_blocks:
+            surface.blit(self.lava_img, block)
+
+    def check_collision(self, snake_head):
+        # Проверяем столкновение головы змеи с любым блоком лавы
+        for block in self.lava_blocks:
+            if abs(snake_head[0] - block[0]) < self.snake_block and abs(snake_head[1] - block[1]) < self.snake_block:
+                return True
+        return False
+
+
 def gameLoop(difficulty):
     global volume_level
     game_over = False
@@ -339,9 +389,21 @@ def gameLoop(difficulty):
     snake_block = int(difficulty_settings[difficulty]['snake_block'])
     snake_speed = difficulty_settings[difficulty]['speed']
 
+    # Инициализация лавы только для высокой сложности
+    lava = None
+    if difficulty == 'hard':
+        lava = Lava(snake_block, dis_width_loc, dis_height_loc)
+
     # Загрузка спрайтов для яблока
     apple_frames = [load_image(f"apple_anim/apple{i}.png", (snake_block, snake_block)) for i in range(1, 5)]
     apple_animation = AppleAnimation(0, 0, apple_frames, 100)
+
+    # Загрузка спрайтов для синего яблока
+    blue_apple_frames = [load_image(f"blue_apple_anim/blue_apple{i}.png", (snake_block, snake_block)) for i in range(1, 5)]
+    blue_apple_animation = None
+    blue_apple_spawn_time = 0
+    blue_apple_expiration_time = 0
+    blue_apple_active = False
 
     # Загрузка спрайтов для змеи
     snake_head_img = load_image("snake_head.png", (snake_block, snake_block))
@@ -360,8 +422,7 @@ def gameLoop(difficulty):
     Length_of_snake = 1
 
     foodx = round(random.randrange(0, dis_width_loc - snake_block) / snake_block) * snake_block
-    foody = round(
-        random.randrange(panel_height, dis_height_loc - panel_height - snake_block) / snake_block) * snake_block
+    foody = round(random.randrange(panel_height, dis_height_loc - panel_height - snake_block) / snake_block) * snake_block
 
     high_score = get_leader_score(difficulty)
     win_condition = {'easy': 30, 'medium': 60, 'hard': 100}[difficulty]
@@ -403,6 +464,12 @@ def gameLoop(difficulty):
             if not game_over:
                 return gameLoop(difficulty)
 
+        # Проверка столкновения с лавой
+        if difficulty == 'hard' and lava.check_collision(snake_Head):
+            game_over = not show_game_over_screen(Length_of_snake - 1, difficulty)
+            if not game_over:
+                return gameLoop(difficulty)
+
         snake_List.insert(0, snake_Head)
         if len(snake_List) > Length_of_snake:
             del snake_List[-1]
@@ -412,22 +479,53 @@ def gameLoop(difficulty):
             if not win:
                 return gameLoop(difficulty)
 
+        # Обработка синего яблока
+        current_time = pygame.time.get_ticks()
+        if difficulty in ['medium', 'hard']:
+            if not blue_apple_active and current_time - blue_apple_spawn_time >= 30000:  # 30 секунд
+                blue_apple_spawn_time = current_time
+                blue_apple_expiration_time = current_time + 15000  # 15 секунд
+                blue_apple_x = round(random.randrange(0, dis_width_loc - snake_block) / snake_block) * snake_block
+                blue_apple_y = round(random.randrange(panel_height, dis_height_loc - panel_height - snake_block) / snake_block) * snake_block
+                blue_apple_animation = BlueAppleAnimation(blue_apple_x, blue_apple_y, blue_apple_frames, 100)
+                blue_apple_active = True
+
+            if blue_apple_active and current_time > blue_apple_expiration_time:
+                blue_apple_active = False
+
         dis.fill(blue)
         pygame.draw.rect(dis, white, [0, 0, dis_width_loc, panel_height])
 
         our_snake(snake_block, snake_List, direction, snake_head_img, snake_body_img)
+
+        # Рисуем красное яблоко
         apple_animation.x = foodx
         apple_animation.y = foody
         apple_animation.update()
         apple_animation.draw(dis)
+
+        # Рисуем синее яблоко, если оно активно
+        if blue_apple_active:
+            blue_apple_animation.update()
+            blue_apple_animation.draw(dis)
+
+        # Рисуем лаву, если это высокая сложность
+        if difficulty == 'hard':
+            lava.draw(dis)
+
         your_score(Length_of_snake - 1, high_score, dis_width_loc)
         pygame.display.update()
 
+        # Проверка столкновения с красным яблоком
         if abs(x1 - foodx) < snake_block and abs(y1 - foody) < snake_block:
             foodx = round(random.randrange(0, dis_width_loc - snake_block) / snake_block) * snake_block
-            foody = round(
-                random.randrange(panel_height, dis_height_loc - panel_height - snake_block) / snake_block) * snake_block
+            foody = round(random.randrange(panel_height, dis_height_loc - panel_height - snake_block) / snake_block) * snake_block
             Length_of_snake += 1
+
+        # Проверка столкновения с синим яблоком
+        if blue_apple_active and abs(x1 - blue_apple_x) < snake_block and abs(y1 - blue_apple_y) < snake_block:
+            Length_of_snake += 3
+            blue_apple_active = False
 
         clock.tick(snake_speed)
 
