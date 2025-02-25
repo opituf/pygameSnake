@@ -1,5 +1,4 @@
 import pygame
-import time
 import random
 import os
 
@@ -14,10 +13,12 @@ black = (0, 0, 0)
 red = (213, 50, 80)
 green = (0, 255, 0)
 blue = (50, 153, 213)
+light_blue = (179, 209, 252)
+dark_blue = (141, 186, 252)
 
 # Размеры экрана
 dis_width = 800
-dis_height = 600
+dis_height = 800
 
 # Размеры блока змеи по умолчанию
 default_snake_block = 10
@@ -96,6 +97,12 @@ def get_leaderboard(difficulty):
             return sorted(leaderboard, key=lambda x: x[1], reverse=True)
     return []
 
+# Отрисовка фона
+def draw_checkerboard(surface, grid_size, cell_size):
+    for row in range(grid_size):
+        for col in range(grid_size):
+            color = light_blue if (row + col) % 2 == 0 else dark_blue
+            pygame.draw.rect(surface, color, (col * cell_size, row * cell_size + panel_height, cell_size, cell_size))
 
 # Сохранение нового рекорда для конкретной сложности
 def save_record(difficulty, name, score):
@@ -494,7 +501,9 @@ def gameLoop(difficulty):
                 blue_apple_active = False
 
         dis.fill(blue)
-        pygame.draw.rect(dis, white, [0, 0, dis_width_loc, panel_height])
+        pygame.draw.rect(dis, blue, [0, 0, dis_width_loc, panel_height])
+
+        draw_checkerboard(dis, dis_height_loc // snake_block, snake_block)
 
         our_snake(snake_block, snake_List, direction, snake_head_img, snake_body_img)
 
