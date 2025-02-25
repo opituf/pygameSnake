@@ -96,11 +96,13 @@ def get_leaderboard(difficulty):
             return sorted(leaderboard, key=lambda x: x[1], reverse=True)
     return []
 
+
 # Сохранение нового рекорда для конкретной сложности
 def save_record(difficulty, name, score):
     record_file = difficulty_settings[difficulty]['record_file']
     with open(record_file, 'a') as file:
         file.write(f"{name},{score}\n")
+
 
 # Получение счета лидера для конкретной сложности
 def get_leader_score(difficulty):
@@ -307,6 +309,25 @@ def handle_volume_buttons(mouse_pos, x, y):
     pygame.mixer.music.set_volume(volume_level)
 
 
+class AppleAnimation:
+    def __init__(self, x, y, frames, frame_delay):
+        self.frames = frames
+        self.current_frame = 0
+        self.x = x
+        self.y = y
+        self.last_update_time = 0
+        self.frame_delay = frame_delay
+
+    def update(self):
+        current_time = pygame.time.get_ticks()
+        if current_time - self.last_update_time > self.frame_delay:
+            self.last_update_time = current_time
+            self.current_frame = (self.current_frame + 1) % len(self.frames)
+
+    def draw(self, surface):
+        surface.blit(self.frames[self.current_frame], (self.x, self.y))
+
+
 def gameLoop(difficulty):
     global volume_level
     game_over = False
@@ -318,10 +339,13 @@ def gameLoop(difficulty):
     snake_block = int(difficulty_settings[difficulty]['snake_block'])
     snake_speed = difficulty_settings[difficulty]['speed']
 
-    # Масштабирование спрайтов
-    apple_img = load_image('apple.png', (snake_block, snake_block))
-    snake_head_img = load_image('snake_head.png', (snake_block, snake_block))
-    snake_body_img = load_image('snake_body.png', (snake_block, snake_block))
+    # Загрузка спрайтов для яблока
+    apple_frames = [load_image(f"apple_anim/apple{i}.png", (snake_block, snake_block)) for i in range(1, 5)]
+    apple_animation = AppleAnimation(0, 0, apple_frames, 100)
+
+    # Загрузка спрайтов для змеи
+    snake_head_img = load_image("snake_head.png", (snake_block, snake_block))
+    snake_body_img = load_image("snake_body.png", (snake_block, snake_block))
 
     # Создаем окно с новыми размерами
     dis = pygame.display.set_mode((dis_width_loc, dis_height_loc))
@@ -392,7 +416,10 @@ def gameLoop(difficulty):
         pygame.draw.rect(dis, white, [0, 0, dis_width_loc, panel_height])
 
         our_snake(snake_block, snake_List, direction, snake_head_img, snake_body_img)
-        dis.blit(apple_img, (foodx, foody))
+        apple_animation.x = foodx
+        apple_animation.y = foody
+        apple_animation.update()
+        apple_animation.draw(dis)
         your_score(Length_of_snake - 1, high_score, dis_width_loc)
         pygame.display.update()
 
